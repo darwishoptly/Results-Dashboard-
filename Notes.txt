@@ -1,0 +1,111 @@
+-- TO DO --
+find where for a segment variation winner winner different from overall. math is significantly different. 
+
+
+backend:
+what are the specific calls that I make for one instance. 
+How many times do I expect in an hour. (Should we throttle this for once every 6 hours)
+On average how much do you expect. 
+In the app make so only 20-30 run simaltaneously. 
+combo of throttling / day and x simeltaneously will help. 
+
+api_token.py for tokens 
+
+
+
+app engine remote api (account usage information)
+How to get token 
+nginx
+flask
+CTB
+Check on Revenue, esp for older archived exp.
+
+Archived Results 
+	- How to deal with old tests CTB for revenue? ("-")
+	- [DONE] How far back should we go (maybe just the last 50 tests)?
+	- Threading 
+
+Things to Check
+	- Is the current form of authentication going to work? 
+	- Should I have a timeout on if API call fails? Should I retry? 
+	- If there is some sort of error, I should slash the report, and email myself
+	
+
+## Testing Velocity 
+
+
+
+
+---- TODO ----
+
+## Overall 
+Archived Results 
+
+## Experiment Stats 
+# TODO SCENARIO WHERE THERE ARE LESS THAN 5 GOALS? 
+# [DONE] Don't count scenarios where visitor count < 100 
+
+## Segments
+# [DONE] Ignore Segments that are only applicable to one test
+# [DONE] Consider looking only at segment pairs that are in atleast 30% of experiments (Speeds things up a lot) + have over X number of visitors compared to the full experiment! 
+# [DONE] Ignore experiments with a small number of visitors. 
+
+
+
+
+
+
+
+ResultsExports: 
+
+ 
+
+SORTING:
+- Sort Experiments by Goal conversions that matter 
+
+SUMMARY TO ADD:
+- Status of Experiments by Project (Summary Page) 
+- Start and End Date
+
+EDGE CASES:
+- Archived Results  
+
+Next Steps
+- Clean up code 
+- Segments
+- Start and End Date 
+
+
+
+- Results over time  
+
+
+Summary Statistics:
+Number of Experiments ran
+Number of Goals Tracked 
+
+
+Successful Experiments: 
+Take 5 most frequent goals
+Show top 5 experiment variations with highest lift for these goals 
+Show 5 experiment variations with lowest lift for these goals 
+Must be atleast 5% difference. 
+
+
+
+Segments: 
+In order print given the following:
+Segment Name Value Pair: Experiment Variation, Goal Name, Difference in Improvement, Improvment without the segment, Improvement with the segment 
+
+Sort Criteria: 
+Magnitide of Difference 
+Highlight if its a top 5 goal
+
+Top 3 segments and count of experiments where there is a deviation from mean. 
+
+
+
+
+
+
+

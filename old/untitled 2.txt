@@ -1,0 +1,3 @@
+
+
+t = sum([1 for c in comments if "flicker" in c[0] or "timing" in c[0] or "Interval" in c[0] or "setTimeout" in c[0]])

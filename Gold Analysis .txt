@@ -1,0 +1,72 @@
+import types 
+import sqlalchemy as sqlalchemy
+from dateutil.relativedelta import relativedelta
+
+def dbg(dbobj, flat=False):
+	object_list = [dbobj] if (type(dbobj) is not types.ListType) and (type(dbobj) is not sqlalchemy.orm.collections.InstrumentedList) else dbobj
+	attrs = engine.execute("select * from " + object_list[0].__tablename__).keys()
+	for obj in object_list: 
+		if not flat:
+			pprint([(attr, getattr(obj, attr)) for attr in attrs])
+		else:
+			print([(attr, getattr(obj, attr)) for attr in attrs])
+
+
+#Gold Churn 
+
+start_date = datetime.date(2013, 1, 1)
+totango_start = datetime.date(2013, 11, 1)
+
+
+
+accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= start, Summary.churn==True).all()
+date_range = [(start_date + relativedelta(months=i)) for i in range(0,13)]
+
+# months active == 1 per month 
+[len([a for a in accounts if a.start_date.month==d.month and a.start_date.year==d.year and a.months_active==1]) for d in date_range]
+#2/18 
+[19, 10, 28, 19, 19, 30, 26, 25, 31, 53, 53, 31, 12]
+
+accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= start).all()
+# start per month 
+[len([a for a in accounts if a.start_date.month==d.month and a.start_date.year==d.year]) for d in date_range]
+# 2 / 18 
+[93, 73, 83, 102, 103, 114, 123, 116, 102, 134, 142, 170, 121]
+
+
+
+
+
+
+############ TOTANGO ANALYSIS ###################
+# months active over time 
+# How do we calculate months active? Is it a delta in days? 
+
+
+accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= totango_start, Summary.churn==True).all()
+date_range = [(totango_start + relativedelta(months=i)) for i in range(0,3)]
+
+def getAttr(attr, a):
+	return sum([getattr(m, attr) or 0 for m in a.totango_months]) / a.months_active
+
+# months_active == 1 
+
+
+# avg view results for accounts with months active == 1 and who churned 
+m = 1
+sum([getAttr("view_results", a) for a in accounts if a.months_active==m]) / float(len(filter(lambda x: x.months_active==m, accounts)))
+m = 2
+sum([getAttr("view_results", a) for a in accounts if a.months_active==m]) / float(len(filter(lambda x: x.months_active==m, accounts)))
+
+accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= totango_start, Summary.churn==False).all()
+
+# avg view results per month 
+[sum([getAttr("view_results", a) for a in accounts if a.months_active==1 and a.start_date.month==d.month and a.start_date.year==d.year]) / len([getAttr("view_results", a.totango_months) for a in accounts if a.months_active==1 and a.start_date.month==d.month and a.start_date.year==d.year]) for d in date_range]
+
+
+ 
+ ###plat###
+accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= totango_start, Summary.churn==True).all()
+
+debug = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= totango_start, Summary.churn==True).all()
+
