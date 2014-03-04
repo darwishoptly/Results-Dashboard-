@@ -266,6 +266,15 @@ def _mean(visitors, sum_of_values):
 
   return 0 if visitors <= 0 else (float(sum_of_values) / visitors)
 
+def exp_confidence(visitors, sum_of_values):
+  #In the JS code, sumOfValues is sometimes null, in which case
+  #division causes it to behave like 0.
+  #The equivalent idea here is that sum_of_values may be
+  #None, in which case the function behaves as if it's 0.
+  new_mean = _mean(visitors, sum_of_values);
+
+  return 0 if visitors <= 0 else ((new_mean * 1.96) / _sqrt(visitors))
+
 
 def _mean_diff_confidence(b_visitors,
                           b_value,
@@ -526,13 +535,17 @@ def beta_cdf(Z, A, B):
 # pValue = beta_cdf(Z, bVisitors, visitors)
 
 def expDist(bVisitors, bValue, visitors, value):
-
+  
   meanRatio = (bValue/float(bVisitors))/(value/float(visitors))
   Z = meanRatio / (meanRatio  + float(visitors) / float(bVisitors))  
   if (meanRatio > 1):
+     meanRatio = (value/float(visitors))/(bValue/float(bVisitors))
+     Z = meanRatio / (meanRatio  + float(visitors) / float(bVisitors))  
      return beta_cdf(Z, bVisitors, visitors)
   else:
-     return 1- beta_cdf(Z, bVisitors, visitors)
+     meanRatio = (bValue/float(bVisitors))/(value/float(visitors))
+     Z = meanRatio / (meanRatio  + float(visitors) / float(bVisitors))  
+     return 1 - beta_cdf(Z, bVisitors, visitors)
   
 # print expDist(3678, 46329.43, 3936,48519.80)
 #340994626

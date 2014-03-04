@@ -11,7 +11,7 @@ from Queue import Empty
 import myAdapter
 
 
-# One instance of the OptlyData class holds all experiment information for a single segment id, value pair, for a given project. If no segment ID,Value pair is defined, then its just for the plain experiments for an entire project. 
+# One instance of the OptlyData class holds all experiment information for a single segment id, value pair, for a given project. If no segment ID,Value pair is defined, then its for all experiments for an entire project. 
 
 class client:
 	def __init__(self, GAEAuthCookie, project_id, account_id, options={}): # options - email, optimizely_session, segment_id, segment_value 
@@ -39,19 +39,15 @@ class client:
 			self.setAccountToken()
 		self.exp_descriptions = options["exp_descriptions"] if "exp_descriptions" in options else {} 
 		
-		self.nextMethod = [self.setVisitorCount, self.createTokenHash, self.setGoals, self.setResultStatistics]
+		self.months_ago = options["months_ago"] if "months_ago" in options else 3
 		
 		if options["start"]:
 			self.start()
 	
-	# API Calls must be made in order, this process the next call in the this 
-	def nxt(self):
-		self.nextMethod.pop(0)()
-	
 	# Fully creates Optly Data Object making all necessary API calls 
 	def start(self):
 
-		self.setExperimentDescriptions(6)
+		self.setExperimentDescriptions(self.months_ago)
 		if self.exp_descriptions == {}:
 			return None
 		
@@ -170,7 +166,7 @@ class client:
 			p.join(30)
 			if p.is_alive():
 				print "ERROR JOINING PROCESS FOR: ", p.name
-				p.terminate()
+				[p.terminate() for p in processes if p.is_alive()]
 				raise Exception("Goal Conversion Error:", (self.account_id, self.project_id))
 		print "end batch process"
 		if t:
@@ -183,16 +179,6 @@ class client:
 		# print "results call, recieved", exp_id, "into queue"
 		r = requests.get("HTTPS://api.optimizely.com/v1/results/%s" % (exp_id), params={"debug":"false", "bucket_count" : "1", "token": self.token_hash[exp_id], "segment_id" : self.segment_id, "segment_value" : self.segment_value }, cookies={"optimizely_session": self.optimizely_session, "SACSID" : self.GAE_Auth_Cookie}).json()["data"]
 		if r!= []:
-			# for data in r:
-			# 	goal_type = data["type"]
-			# 	if goal_type != "event_goal" and goal_type != "revenue_goal":
-			# 		goal_id = "" 
-			# 	else:
-			# 		goal_id = str(data["goal_ids"][0])
-			# 	var_id, conversions = data["variation_id"], data["values"][0]
-			# 	# print (exp_id, goal_id, var_id, conversions, goal_type)
-			# 	# print "results call, putting", exp_id, "into queue"
-			# 	output.put((exp_id, goal_id, var_id, conversions, goal_type))
 			for data in r:
 				goal_type = data["type"]
 				var_id, conversions = data["variation_id"], data["values"][0]
@@ -263,14 +249,18 @@ class client:
 	
 	def safelyMakeResultsCall(self):
 		try:
-			self.makeResultsCallSlow(15)	
-		except: 
+			self.makeResultsCall()
+		except:		
 			try:
-				"trying slower call"
-				self.makeResultsCallSlow(5)	
-			except:
-				"trying slower call 3"
-				self.makeResultsCallSlow(3)
+				self.makeResultsCallSlow(15)	
+			except: 
+				try:
+					print "trying slower call"
+					self.makeResultsCallSlow(5)	
+				except:
+					print "trying slower call 3"
+				
+					self.makeResultsCallSlow(3)
 		
 	def add_experiment_call(self, q, output, extra, third):
 		exp_id = q.get()
@@ -278,7 +268,7 @@ class client:
 		for goal in req_goals["goals"]: 
 			output.put((exp_id, str(goal["id"]), goal["name"]))
 		for variation in req_goals["variations"]:
-			third.put((str(variation["id"]), variation["name"][0]))
+			third.put((str(variation["id"]), "_".join(variation["name"])))
 		baseline_index = req_goals["display_baseline_index"]
 		extra.put((exp_id, req_goals["earliest"], req_goals["latest"], str(req_goals["variations"][baseline_index]["id"])))	
 		q.task_done()
@@ -402,18 +392,45 @@ class client:
 		baseline = self.getVariationInfo(exp_id, baseline_variation_id, goal_id)
 		variation = self.getVariationInfo(exp_id, var_id, goal_id)
 		try:
-			p = NormDist.pVal(baseline["visitors"], 
-											baseline["conversions"], 
-											baseline["sum_of_squares"], 
-											variation["visitors"],
-											variation["conversions"],
-											variation["sum_of_squares"])
+			# p = NormDist.pVal(baseline["visitors"], 
+			# 								baseline["conversions"], 
+			# 								baseline["sum_of_squares"], 
+			# 								variation["visitors"],
+			# 								variation["conversions"],
+			# 								variation["sum_of_squares"])
+			p = ExpDist.expDist(baseline["visitors"], baseline["conversions"], variation["visitors"], variation["conversions"])
 		except:
 			p = "-"
 		if str(p) == "nan":
 			return "-"
 		# return p if (baseline["conversions"] / baseline["visitors"] > variation["conversions"] / variation["visitors"]) else 1.0 - p
 		return p
+	
+	def CTBExponential(self, exp_id, var_id, goal_id):
+		try:
+			baseline_variation_id = filter(lambda var_id: var_id == self.exp_descriptions[exp_id]["baseline_id"] , self.visitor_count[exp_id]['variation'].keys())[0]
+		except:
+			return 0.0
+		if var_id == baseline_variation_id:
+			return 0.0
+		baseline = self.getVariationInfo(exp_id, baseline_variation_id, goal_id)
+		variation = self.getVariationInfo(exp_id, var_id, goal_id)
+		if variation["visitors"] == 0 or baseline["visitors"] == 0:
+			return "-"
+                if variation["conversions"] == 0 and baseline["conversions"] == 0:
+			return "-"
+                if variation["conversions"] == 0:
+                        return "0"
+                if variation["conversions"] > 0 and baseline["conversions"] == 0:
+			return "1"
+		p = ExpDist.expDist(baseline["visitors"], 
+											baseline["conversions"], 
+											variation["visitors"],
+											variation["conversions"])
+		if str(p) == "nan":
+			return "-"
+		# return p if (baseline["conversions"] / baseline["visitors"] > variation["conversions"] / variation["visitors"]) else 1.0 - p
+		return p		
 	
 	def getGoalConversions(self, exp_id, var_id, goal_id):
 		visitors = self.visitor_count[exp_id]['variation'][var_id]
@@ -438,7 +455,7 @@ class client:
 	        conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
 	        b_conversions, b_conversion_rate = self.getGoalConversions(exp_id, baseline_variation_id, goal_id)
 	        improvement = "-" if (b_conversion_rate == 0 or conversion_rate == "-" or b_conversion_rate == "-") else (float(conversion_rate) / float(b_conversion_rate)) - 1
-	        CTB = self.CTBNormal(exp_id, var_id, goal_id) if (conversions > 25 and b_conversions > 25) else "-"
+	        CTB = self.CTBExponential(exp_id, var_id, goal_id) if (conversions > 25 and b_conversions > 25) else "-"
 	        return (conversions, conversion_rate, improvement, CTB)
 	
 	def setResultStatistics(self):
