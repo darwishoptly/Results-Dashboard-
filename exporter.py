@@ -14,18 +14,18 @@ import datetime
 GAE_Auth_Cookie = "AJKiYcG6oLAqYFRpJj7i9kcQ-NCMxUQcHCSr4DyXdqIF0KiQu13SOCNVfNf_CpX5rmmO2ZJ8HrQmC9Du6gcVYBmvmrBRCz-qDr4QjTQYiO9PRqQmUwukXUZAgNS1vyHTkWzGhFixZjty79aMdMrGLVvs3futE2uR6NqjAeewi-roo3arSlYob8wysV6JEcF--S8KS7CBzEbzwZBCqr8abyyHsVLH-6HfKs6NiQqyL5QkW1ZAWvColZSCtXkhekHTykJAddKN5RAijz51dRyLIptZxibK9osvsIC-V8Lg3ktYlgqzKfa-Y8dF9HWc_Dd8qgEoI6_K_OAk0hj4faH6Vh699museKay0JVzkVHtkhqPrtEPzILHkcDnkyPV7eU4LMYwHEba6mfFeNr1ibnmypL201se2AL4bniufW5J8ZBJ8x9DpLRwBBuiF9ZcPhZDPyKD5wdozV5IGYfRVah9C1lJ9nFWniqrQlnXikqa63wWG0b5iXD94WP7Ei5jIRMxNNiJyCCqO2UVQmiPvwbv-261A3HKTBfQkspOd1ZR_ycY8qWc4UL0tjc8-hervg0rFBxauatTgCxL74S42YI_KmwbaNZs43C02LgEX6mG_cdp_HGjolegwY4BMMBUxwjsw6rEFF3WIy9Gdgwngcusck19x2BePLowQg"
 # optimizely_session = "fc7393a777c80660fb925303329039693509f167"
 
-email = "ben.cole@mec.ca"
-a_name = "MEC"
+email = "f.dekock@elsevier.com"
+a_name = "Elsevier2"
 
-account_id = 186764410
-project_id = 186764410
+account_id = 175078151
+project_id = 269842467
 name = a_name+"_%s.xlsx" % str(datetime.date.today())
 
 
 conversion_limit = 50 ## Minimum number of conversions needed in variation and original to be considered 
 
 print "************************** Running %s Dashboard **************************" % a_name 
-D = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, {"start": True, "email": email, "months_ago" : 6})
+D = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, {"start": True, "email": email, "months_ago" : 4})
 
 num_experiments = len(D.exp_descriptions.keys())
 
@@ -295,7 +295,6 @@ for exp_id in D.goals.keys():
 				# record max improvement variation 
 
 alternate_wins = sorted(alternate_wins, key = lambda x: x[10], reverse=True)
-
 
 # [(i[0][0], i[0][1]) for i in t3]
 

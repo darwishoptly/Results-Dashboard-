@@ -448,15 +448,24 @@ class client:
 		return (conversions, conversion_rate)
 	
 	def getGoalValues(self, exp_id, var_id, goal_id, baseline_variation_id):
-	    conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
-	    if var_id == baseline_variation_id:
-	        return (conversions, conversion_rate, "-", "-")
-	    else:
-	        conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
-	        b_conversions, b_conversion_rate = self.getGoalConversions(exp_id, baseline_variation_id, goal_id)
-	        improvement = "-" if (b_conversion_rate == 0 or conversion_rate == "-" or b_conversion_rate == "-") else (float(conversion_rate) / float(b_conversion_rate)) - 1
-	        CTB = self.CTBExponential(exp_id, var_id, goal_id) if (conversions > 25 and b_conversions > 25) else "-"
-	        return (conversions, conversion_rate, improvement, CTB)
+		conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
+		if var_id == baseline_variation_id:
+			return (conversions, conversion_rate, "-", "-")
+		else:
+			conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
+			b_conversions, b_conversion_rate = self.getGoalConversions(exp_id, baseline_variation_id, goal_id)
+			improvement = "-" if (b_conversion_rate == 0 or conversion_rate == "-" or b_conversion_rate == "-") else (float(conversion_rate) / float(b_conversion_rate)) - 1
+			
+			if conversions > 25 and b_conversions > 25:
+				if self.goals[exp_id]['goals'][goal_id][var_id]['type'] == 'revenue_goal':
+					CTB = self.CTBExponential(exp_id, var_id, goal_id) 
+				else:
+					CTB = self.CTBNormal(exp_id, var_id, goal_id)
+			
+			else:
+				CTB = "-"
+	        
+			return (conversions, conversion_rate, improvement, CTB)
 	
 	def setResultStatistics(self):
 		for exp_id in self.exp_descriptions.keys():
