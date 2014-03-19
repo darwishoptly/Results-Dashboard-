@@ -56,7 +56,7 @@ def getAttr(attr, a):
 m = 1
 sum([getAttr("view_results", a) for a in accounts if a.months_active==m]) / float(len(filter(lambda x: x.months_active==m, accounts)))
 m = 2
-sum([getAttr("view_results", a) for a in accounts if a.months_active==m]) / float(len(filter(lambda x: x.months_active==m, accounts)))
+sum([getAttr("view_results", a) for a in accounts if a.months_active==m]) / float(len(	(lambda x: x.months_active==m, accounts)))
 
 accounts = s.query(Summary).filter(Summary.plan == 'gold', Summary.start_date >= totango_start, Summary.churn==False).all()
 

@@ -2,53 +2,93 @@ import xlsxwriter
 import requests
 import OptlyData
 import datetime
+import pickle
+import os
 
-
-# Provide a list of Experiments where a segment had a different winner that the overall
-# Refactor to factor include CTB for highlighting winner
-# refactor to include exponential distribution
 # clean code and comment
-# check set of segments with Ajith 
+# Graph over time stats
+# Create summary page
+
+debugging = False 
 
 
-GAE_Auth_Cookie = "AJKiYcG6oLAqYFRpJj7i9kcQ-NCMxUQcHCSr4DyXdqIF0KiQu13SOCNVfNf_CpX5rmmO2ZJ8HrQmC9Du6gcVYBmvmrBRCz-qDr4QjTQYiO9PRqQmUwukXUZAgNS1vyHTkWzGhFixZjty79aMdMrGLVvs3futE2uR6NqjAeewi-roo3arSlYob8wysV6JEcF--S8KS7CBzEbzwZBCqr8abyyHsVLH-6HfKs6NiQqyL5QkW1ZAWvColZSCtXkhekHTykJAddKN5RAijz51dRyLIptZxibK9osvsIC-V8Lg3ktYlgqzKfa-Y8dF9HWc_Dd8qgEoI6_K_OAk0hj4faH6Vh699museKay0JVzkVHtkhqPrtEPzILHkcDnkyPV7eU4LMYwHEba6mfFeNr1ibnmypL201se2AL4bniufW5J8ZBJ8x9DpLRwBBuiF9ZcPhZDPyKD5wdozV5IGYfRVah9C1lJ9nFWniqrQlnXikqa63wWG0b5iXD94WP7Ei5jIRMxNNiJyCCqO2UVQmiPvwbv-261A3HKTBfQkspOd1ZR_ycY8qWc4UL0tjc8-hervg0rFBxauatTgCxL74S42YI_KmwbaNZs43C02LgEX6mG_cdp_HGjolegwY4BMMBUxwjsw6rEFF3WIy9Gdgwngcusck19x2BePLowQg"
+GAE_Auth_Cookie = "AJKiYcG3nAApARZhVgWRWzZ58Vh2uJxJaXWIwEj8OqsV3Zwoe_iEAAvKgpouRdrbjGgjSZekMBptyaJULevIXk578cwmVwEsd7h3j9cU_GKT0SEUg8PldX6_yKgxkFHODBP-oLkkLuNmnHbq0X3M9awi_TdnVu6z3Clz5KYSVdipvmY-hlDaBCcZTcRjOo-Smnhv2V0-MhG6UEoJQ5Fk2MbIb4DUTwVcxE8AC0K7CSLivNqX08VGfg5U4VCflpdopjXF1Gc7zxwMBKErOUHgjfD1Qys5FXNCIpDhre-AWnotsX46QB4CNM3FtrlbviCDikIZZMAekD_WkqxAtyKbpDFr96MAnsXdk7VxfkAidvQcn8sOtQ7gZHllgTt3pFn8ycV53MhcPJDHqcMaHJMXQTSJfrld3uhni5xJTLkRw3P2oQue6OXA0eEJj9LxecRWUNuZTn1szXDwgS6d7CpcqgM8GdSrnN8gSlOTksqf1q-6lUq5KXBwsvHPfFTizjut9emQLSeSscqypZPPdVwzP_wQkfxCpkyE12FGaKQNhcRLwNs0q5vFLHHaz9wYX-Hl-NVxWXH53Us2sbi5kYE6-g6rhaaQurK02XdSaLZqZ_-kawE-JxgOd3fffUiEyDNGXETGzdem_XXEw3z3D5_EdZuauSk4j26xNw"
 # optimizely_session = "fc7393a777c80660fb925303329039693509f167"
 
-email = "f.dekock@elsevier.com"
-a_name = "Elsevier2"
+email = "cody@shopnastygal.com"
+a_name = "NastyGal"
 
-account_id = 175078151
-project_id = 269842467
+account_id = 183850804
+project_id = 183850804
 name = a_name+"_%s.xlsx" % str(datetime.date.today())
 
 
 conversion_limit = 50 ## Minimum number of conversions needed in variation and original to be considered 
 
-print "************************** Running %s Dashboard **************************" % a_name 
-D = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, {"start": True, "email": email, "months_ago" : 4})
+print "************************** Running %s Dashboard **************************" % a_name
+
+if debugging:
+	try:
+		D = pickle.load(open( "pickles/results%s" % (str(account_id) + "," + str(project_id)),  "rb" ))
+	except Exception as e:
+		print e
+		D = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, {"start": True, "email": email, "months_ago" : 12})
+		pickle.dump(D, open( "pickles/results%s" % (str(account_id) + "," + str(project_id)), "wb" ))
+else: 
+	D = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, {"start": True, "email": email, "months_ago" : 12})
 
 num_experiments = len(D.exp_descriptions.keys())
-
 segment_names = {}
-for segment in requests.get("https://www.optimizely.com/api/projects/%s/segments.json?default_segments=true&token=%s" % (str(project_id), D.account_token), cookies=D.cookies).json()["segments"]:
-	segment_names[str(segment['id'])] = segment["name"]
-
 segment_value_maps = {} # exp: seg value map
-for exp_id in D.exp_descriptions.keys():
-	print "segment_value_maps created: exp_id" , exp_id
-	segment_value_maps[exp_id] = requests.get("https://api.optimizely.com/v1/segment_values/%s?token=%s" % (str(exp_id), D.token_hash[exp_id]), cookies=D.cookies).json()["segment_value_map"]
+segment_id_value_pairs = {}
+
+def getSegmentNames():
+	s_names = {}
+	for segment in requests.get("https://www.optimizely.com/api/projects/%s/segments.json?default_segments=true&token=%s" % (str(project_id), D.account_token), cookies=D.cookies).json()["segments"]:
+		s_names[str(segment['id'])] = segment["name"]
+	return s_names
+
+def getSegmentValueMaps():
+	s_maps = {}
+	for exp_id in D.exp_descriptions.keys():
+		print "segment_value_maps created: exp_id" , exp_id
+		s_maps[exp_id] = requests.get("https://api.optimizely.com/v1/segment_values/%s?token=%s" % (str(exp_id), D.token_hash[exp_id]), cookies=D.cookies).json()["segment_value_map"]
+	return s_maps
+
+def get_segment_id_value_pairs():
+	s_id_value_pairs = {}
+	for exp_id in D.exp_descriptions.keys():
+		for s_id in segment_value_maps[exp_id]:
+			for s_val in segment_value_maps[exp_id][s_id]:
+				if (s_id, s_val) in s_id_value_pairs:
+					s_id_value_pairs[(s_id, s_val)] += 1 	 
+				else: 
+					s_id_value_pairs[(s_id, s_val)] = 1
+	return s_id_value_pairs
+
+
+if debugging:
+	if os.path.isfile("pickles/segment_names%s" % (str(account_id) + "," + str(project_id))): 
+		segments_names = pickle.load(open("pickles/segment_names%s" % (str(account_id) + "," + str(project_id)),  "rb" ))
+	else: 
+		segment_names = getSegmentNames()
+		pickle.dump(segment_names, open( "pickles/segment_names%s" % (str(account_id) + "," + str(project_id)), "wb" ))
+else: 
+	segment_names = getSegmentNames()
+
+if debugging: 
+	if os.path.isfile("pickles/segment_value_maps%s" % (str(account_id) + "," + str(project_id))): 
+		segment_value_maps = pickle.load(open( "pickles/segment_value_maps%s" % (str(account_id) + "," + str(project_id)),  "rb" ))
+	else: 	
+		segment_value_maps = getSegmentValueMaps()
+		pickle.dump(segment_value_maps, open( "pickles/segment_value_maps%s" % (str(account_id) + "," + str(project_id)), "wb" ))
+else:
+	segment_value_maps = getSegmentValueMaps()
+
 
 #SCHEMA ==> { s_id : {s_val : 0, count : 1 } }
 # Create Segment ID, Val Pairs with frequency
-segment_id_value_pairs = {}
-for exp_id in D.exp_descriptions.keys():
-	for s_id in segment_value_maps[exp_id]:
-		for s_val in segment_value_maps[exp_id][s_id]:
-			if (s_id, s_val) in segment_id_value_pairs:
-				segment_id_value_pairs[(s_id, s_val)] += 1 	 
-			else: 
-				segment_id_value_pairs[(s_id, s_val)] = 1
-
+segment_id_value_pairs = get_segment_id_value_pairs()	
 sorted_seg_pairs = sorted(segment_id_value_pairs.items(), key= lambda x: x[1], reverse=True) 
 ## Filter out segment pairs that are not in atleast 25% of all experiments.
 sorted_seg_pairs = [pair for pair in sorted_seg_pairs if float(pair[1]) / float(num_experiments) > .25]
@@ -60,24 +100,23 @@ sorted_seg_pairs = [pair for pair in sorted_seg_pairs if float(pair[1]) / float(
 # Ignore experiments with a small number of visitors. 
 
 def removeLowExpVisitors(s, percent): 
+	low_count = 0
 	for exp_id in s.exp_descriptions.keys():
 		total_visitors = D.visitor_count[exp_id]["total_visitors"]
 		if s.visitor_count[exp_id]["total_visitors"] < percent * total_visitors: 
 			del s.exp_descriptions[exp_id]
 			del s.visitor_count[exp_id]
 			del s.goals[exp_id]
-
+			low_count += 1
+	print "REMOVED, " + low_count + " experiments"
 
 S = []
-i = 1
-# pair = ('167439469'  ,  'unknown')
-for pair in sorted_seg_pairs:
-	# print D.exp_descriptions
-	pair = pair[0] 
-	print "PAIR: ", i, " out of" , str(len(sorted_seg_pairs)), pair[0], " : " , pair[1], "........", i
+
+
+def make_segment(segment_id, segment_value, m_ago):
 	s = OptlyData.client(GAE_Auth_Cookie, project_id, account_id, { "optimizely_session": D.optimizely_session,
-													 				"segment_id" : pair[0],
-																	"segment_value": pair[1],
+													 				"segment_id" : segment_id,
+																	"segment_value": segment_value,
 																	"segment_value_maps": segment_value_maps,
 																	"token_hash" : D.token_hash,
 																	"start" : False,
@@ -85,11 +124,12 @@ for pair in sorted_seg_pairs:
 																	"account_token": D.account_token,
 																	"D": D
 																	})
-	s.setExperimentDescriptions(4)
+	s.setExperimentDescriptions(m_ago)
 	s.setVisitorCount()
+	# Removes Experiments where this segment id, value pair does not make up x% of traffic
 	removeLowExpVisitors(s, .05)
 	if len(s.exp_descriptions) == 0:
-		continue
+		return None
 	s.makeExperimentsCall() ## sets variation names and original goals	
 	## Finish building the hash 
 	# {exp_id: "goals" { goal_id :  { "name" : goal_name , variation_id: {"conversions": value, type: "type", "sum_of_squares" : SS_val_if_rev_goal, "conversion_rate" " X, "improvment" : X,  "CTB" : X }}}} 
@@ -97,10 +137,47 @@ for pair in sorted_seg_pairs:
 	# D.setGoals()
 	s.setResultStatistics()
 	s.setGoalNames()
-	S.append(s)
-	i = i + 1
+	return s
 
+ERROR_SEGS = []
+def makeSegments(m_ago=4):
+	Segs = []
+	i = 1
+	# pair = ('167439469'  ,  'unknown')
+	for pair in sorted_seg_pairs:
+		# print D.exp_descriptions
+		pair = pair[0] 
+		print "PAIR: ", i, " out of" , str(len(sorted_seg_pairs)), pair[0], " : " , pair[1], "........", i
+		file_name = "pickles/results%s" % ",".join([str(item) for item in [account_id, project_id, pair[0], pair[1]]])
+		if debugging: 
+			if os.path.isfile(file_name): 
+				s = pickle.load(open(file_name,  "rb" ))
+				if s:
+					Segs.append(s)
+				else: 
+					continue
+			else:
+				try:
+					s = make_segment(pair[0], pair[1], m_ago)
+					if s:
+						pickle.dump(s, open(file_name, "wb" ))
+						S.append(s)
+					else:
+						continue
+				except Exception as e:
+					ERROR_SEGS.append((pair[0], pair[1], str(e)))
+		else: 
+			try:
+				s = make_segment(str(pair[0]), str(pair[1]), m_ago)
+				Segs.append(s)
+			except Exception as e:
+				ERROR_SEGS.append((pair[0], pair[1], str(e)))
+		i = i + 1
+	return Segs
 
+	# return Segs
+
+S = makeSegments(4) 
 
 i = 0
 imp_goals_positive = []
@@ -169,12 +246,12 @@ for exp_id in D.exp_descriptions:
 				num_high += 1
 				plus_high = False
 				h.append(exp_id)
-			if imp < -.05 and CTB < .05 and plus_low:
+			elif imp < -.05 and CTB < .05 and plus_low:
 				num_low += 1
 				print exp_id, goal_id, var_id, D.goals[exp_id]['goals'][goal_id][var_id]['conversions'], b_conversions, imp
 				plus_low = False	
 				l.append(exp_id)
-			if imp > .05 and  plus_undecided and not plus_high:
+			elif imp > .05 and  plus_undecided and not plus_high:
 				plus_undecided = False 
 				pos_undecided_goals += 1 
 				p.append(exp_id)
@@ -296,10 +373,6 @@ for exp_id in D.goals.keys():
 
 alternate_wins = sorted(alternate_wins, key = lambda x: x[10], reverse=True)
 
-# [(i[0][0], i[0][1]) for i in t3]
-
-# highlight where goal is a "top 5 " goal
-# [ e for e in D.exp_descriptions if datetime.datetime.strptime(D.exp_descriptions[e]['last_modified'][0:-1] , "%Y-%m-%dT%H:%M:%S") > datetime.datetime(2014,1,1,1,1,1)]
 
 def writeRange(worksheet, row, start_col, values, update=False, formats = []):
     global col

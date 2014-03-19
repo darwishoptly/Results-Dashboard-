@@ -12,6 +12,14 @@ from sqlalchemy.orm import backref, mapper, relation, sessionmaker
 from pprint import pprint
 import math
 
+# GAE 
+import remote_gae 
+import models 
+
+remote_gae.fix_path()
+remote_gae.configure_gae_with_defaults(local_gae=False) 
+
+
 Base = declarative_base()
 
 engine = create_engine("postgresql+psycopg2://poweruser1:h6o3W1a5R5d@success-depot.cwgfpgjh6ucc.us-west-2.rds.amazonaws.com/sd_staging")
@@ -25,7 +33,7 @@ class Results(Base):
 	exps_w_win_vars = Column(Integer)
 	goals_w_win_vars = Column(Integer)
 	exps_w_lose_vars = Column(Integer)
-	goals_w_lose_vars = Column(	Integer[])
+	goals_w_lose_vars = Column(	Integer)
 	win_undecided_exp = Column(Integer)
 	lose_undecided_exp = Column(Integer)
 	poc = Column(Boolean)
@@ -44,6 +52,20 @@ class AppUsage(Base):
 	poc = Column(Boolean)
 	churn = Column(Boolean)
 	__table_args__ = (PrimaryKeyConstraint('month', 'year', 'account_id'),)
+	
+
+class GAppUsageMonthly(Base):
+	__tablename__ = "d_app_usage"
+	account_id = Column(String, index=True)
+	month = Column(Integer)
+	year = Column(Integer)
+	avg_goals_per_experiment = Column(Float)
+	num_experiments_started = Column(Integer)
+	number_of_custom_segments = Column(Integer)
+	poc = Column(Boolean)
+	churn = Column(Boolean)
+	__table_args__ = (PrimaryKeyConstraint('month', 'year', 'account_id'),)
+
 
 metadata = Base.metadata
 metadata.create_all(engine)
@@ -59,10 +81,24 @@ a = AppUsage()
 # sdstaging.merge(r)
 sdstaging.commit()
 
-# 
+
 # winning_experiment_count = {} # experiments with a winning variation 
 # winning_goal_count = {} # goals that have a winning variation
 # losing_experiment_count = {} # experiments with a losing variation 
 # losing_goal_count = {} # goals that are losing
 # pos_undecided_experiment_count = {}
 # neg_undecided_experiment_count = {}
+
+
+
+# App Engine - monthly summary: 
+# experiments started 
+# custom segments created
+# which targeting features used
+# high traffic allocation to one variation
+# types of experiments (MVT vs A/B vs Multipage)
+# Types of goals created 
+
+# App Engine Overall Summary: 
+# Analytics Integrations used 
+# of collaborators on experiment 

@@ -23,6 +23,12 @@ import types
 GAE_Auth_Cookie = "AJKiYcHcjiMqMuHSgyEUgHHs5cFDE1zdnJF1pZMEfp3gLOI22tjw61AGIm79qkTV91QG2cbdy9cTZKjB_C1yCnOipUT4U_RvBzgjLudDOJzFmukAVZgDU4tmug4FoPAApy2V6EnAEt3W-AnJxdWXDxnSJo2HrpYK5ppUDowBYVFSqL9OIIUoIUYbGCK2UTx7pcCE3a1WXw_rOjpNWhmCdqiRNhs8jiVLZP2i5L7B-xvrG1TxNlrmhi7IQx37QPt0YaR4bPSzEbO8zSpia-AT6vMtiaOXeXTbbeChDI8TE-Oa2MSqpavD0ZIlA7TKDz16KHX-M5WDljZwsWKCyr3z1jXo2TltubWVQgyzB7ZjF7xSGd0dgHquy76EASEFpZvCDLPr7IZZ498KYmPFw4UtLRNCumSEXa6obfMFbWBbz7EmBZ3jwExMCII8OlIHl_9q2bTBWIRmtgJL5r95SmrkfphgoT7w5wsZlOlRJ5jXJEgH3-fWxd8wxW_MBG0PoJ9HREtgOjpWshrK9o025HBlvOT65tlEnTXkWWmef19HmFPm7H80AmZmXx_PA3WSFJmD1IvjCS2aOIuzXBX2WmvgLWby_GxWahOu8XEE53DM_ZWWXy4irrz4SZ1r55u23XVMm0EST11VOGLwsSEIe5RsT8eQYdsOFOHE7A"
 
 
+# Create Validation to detect if the project is a dev or staging project
+# Calculate revenue with an normal distribution instead of exponential 
+# Figure out pickling
+# Start adding GAE metrics 
+# [DONE] Get Onboarding Start Date for a Single Customer 
+
 ERRORS , EXP_ERRORS = [], []
 
 Base = declarative_base()
@@ -413,9 +419,25 @@ def clearAndInsert(account_id):
 	account = getAccount(account_id)
 	clear(account_id)
 	processAccount(account)
+	
+def getOnboardingStartDate(account):
+	# tasks = account.sfdcaccount[0].taskraytasks
+	# onboarding_start_dates = [t.createddate for t in tasks if t.taskrayproject.project_type__c == "Onboarding"]
+	# todo: refactor to minimize queries to onboardings
+	# if len(onboarding_start_dates) == 0:
+	# 	return None
+	# else:
+	# 	onboarding_start_dates.sort()
+	# 	return onboarding_start_dates[0]
+	
+	# Gives different numbers 
+	sub_starts = [o.subscription_start_date__c for o in account.sfdcaccount[0].opportunities]
+ 	sub_starts.sort()
+ 	return sub_starts[0]
 
 if __name__ == '__main__':
-	accounts = s.query(Summary).filter(Summary.plan == 'platinum', Summary.start_date >= start).all()
+	
+	accounts = s.query(Summary).filter(Summary.plan == 'platinum', Summary.startDate >= start).all()
 
 	for a in accounts:
 		clearAndInsert(a.account_id)

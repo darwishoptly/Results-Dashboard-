@@ -392,13 +392,13 @@ class client:
 		baseline = self.getVariationInfo(exp_id, baseline_variation_id, goal_id)
 		variation = self.getVariationInfo(exp_id, var_id, goal_id)
 		try:
-			# p = NormDist.pVal(baseline["visitors"], 
-			# 								baseline["conversions"], 
-			# 								baseline["sum_of_squares"], 
-			# 								variation["visitors"],
-			# 								variation["conversions"],
-			# 								variation["sum_of_squares"])
-			p = ExpDist.expDist(baseline["visitors"], baseline["conversions"], variation["visitors"], variation["conversions"])
+			p = NormDist.pVal(baseline["visitors"], 
+											baseline["conversions"], 
+											baseline["sum_of_squares"], 
+											variation["visitors"],
+											variation["conversions"],
+											variation["sum_of_squares"])
+			# p = ExpDist.expDist(baseline["visitors"], baseline["conversions"], variation["visitors"], variation["conversions"])
 		except:
 			p = "-"
 		if str(p) == "nan":
@@ -424,9 +424,9 @@ class client:
                 if variation["conversions"] > 0 and baseline["conversions"] == 0:
 			return "1"
 		p = ExpDist.expDist(baseline["visitors"], 
-											baseline["conversions"], 
-											variation["visitors"],
-											variation["conversions"])
+							baseline["conversions"], 
+							variation["visitors"],
+							variation["conversions"])
 		if str(p) == "nan":
 			return "-"
 		# return p if (baseline["conversions"] / baseline["visitors"] > variation["conversions"] / variation["visitors"]) else 1.0 - p
@@ -447,7 +447,7 @@ class client:
 				conversion_rate = "-"
 		return (conversions, conversion_rate)
 	
-	def getGoalValues(self, exp_id, var_id, goal_id, baseline_variation_id):
+	def getGoalValues(self, exp_id, var_id, goal_id, baseline_variation_id, use_exp_distribution=True):
 		conversions, conversion_rate = self.getGoalConversions(exp_id, var_id, goal_id)
 		if var_id == baseline_variation_id:
 			return (conversions, conversion_rate, "-", "-")
@@ -457,7 +457,7 @@ class client:
 			improvement = "-" if (b_conversion_rate == 0 or conversion_rate == "-" or b_conversion_rate == "-") else (float(conversion_rate) / float(b_conversion_rate)) - 1
 			
 			if conversions > 25 and b_conversions > 25:
-				if self.goals[exp_id]['goals'][goal_id][var_id]['type'] == 'revenue_goal':
+				if self.goals[exp_id]['goals'][goal_id][var_id]['type'] == 'revenue_goal' and use_exp_distribution:
 					CTB = self.CTBExponential(exp_id, var_id, goal_id) 
 				else:
 					CTB = self.CTBNormal(exp_id, var_id, goal_id)
@@ -467,7 +467,7 @@ class client:
 	        
 			return (conversions, conversion_rate, improvement, CTB)
 	
-	def setResultStatistics(self):
+	def setResultStatistics(self, use_exp_distribution=True):
 		for exp_id in self.exp_descriptions.keys():
 			print "......STATS......", exp_id
 			if exp_id not in self.visitor_count or exp_id not in self.goals:
@@ -486,8 +486,10 @@ class client:
 					# 	if var_id in self.goals[exp_id]['goals'][goal_id]:
 					# 		del self.goals[exp_id]['goals'][goal_id][var_id]
 					continue
-				for goal_id in goal_ids:           
-					(conversions, conversion_rate, improvement, CTB) = self.getGoalValues(exp_id, var_id, goal_id, baseline_variation_id)
+				for goal_id in goal_ids: 
+					if var_id not in  self.goals[exp_id]["goals"][goal_id]:
+						continue         
+					(conversions, conversion_rate, improvement, CTB) = self.getGoalValues(exp_id, var_id, goal_id, baseline_variation_id, use_exp_distribution)
 					self.goals[exp_id]["goals"][goal_id][var_id]["conversions"] = conversions
 					self.goals[exp_id]["goals"][goal_id][var_id]["conversion_rate"] = conversion_rate
 					self.goals[exp_id]["goals"][goal_id][var_id]["improvement"] = improvement
